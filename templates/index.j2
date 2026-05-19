@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+<title>EC2 Worker Node Dashboard</title>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+
+body {
+    margin: 0;
+    padding: 20px;
+    background: #081028;
+    color: white;
+    font-family: Arial, sans-serif;
+}
+
+h1 {
+    color: #38bdf8;
+    margin-bottom: 20px;
+}
+
+.top-section {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 25px;
+    flex-wrap: wrap;
+}
+
+.card {
+    background: #111c44;
+    padding: 20px;
+    border-radius: 12px;
+    min-width: 220px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.4);
+}
+
+.card h2 {
+    margin: 0;
+    font-size: 16px;
+    color: #94a3b8;
+}
+
+.card p {
+    font-size: 30px;
+    margin-top: 10px;
+    font-weight: bold;
+}
+
+.controls {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+input, select {
+    padding: 12px;
+    border-radius: 8px;
+    border: none;
+    background: #111c44;
+    color: white;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #0f172a;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+th {
+    background: #1e293b;
+    padding: 14px;
+    text-align: center;
+    font-size: 15px;
+}
+
+td {
+    padding: 14px;
+    text-align: center;
+    border-bottom: 1px solid #1e293b;
+}
+
+tr:hover {
+    background: #172554;
+}
+
+.running {
+    background: #14532d;
+    color: #4ade80;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-weight: bold;
+}
+
+.stopped {
+    background: #450a0a;
+    color: #f87171;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-weight: bold;
+}
+
+.footer {
+    margin-top: 20px;
+    color: #94a3b8;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<h1>🚀 EC2 Worker Node Dashboard</h1>
+
+<div class="top-section">
+
+<div class="card">
+    <h2>Total Instances</h2>
+    <p>{{ ec2_info.instances | length }}</p>
+</div>
+
+<div class="card">
+    <h2>Running Instances</h2>
+    <p>
+    {{
+        ec2_info.instances
+        | selectattr('state.name', 'equalto', 'running')
+        | list
+        | length
+    }}
+    </p>
+</div>
+
+<div class="card">
+    <h2>Stopped Instances</h2>
+    <p>
+    {{
+        ec2_info.instances
+        | selectattr('state.name', 'equalto', 'stopped')
+        | list
+        | length
+    }}
+    </p>
+</div>
+
+</div>
+
+<div class="controls">
+
+<input type="text" id="searchInput" placeholder="Search instance...">
+
+<select id="statusFilter">
+    <option value="all">All Nodes</option>
+    <option value="running">Running</option>
+    <option value="stopped">Stopped</option>
+</select>
+
+</div>
+
+<table id="instanceTable">
+
+<thead>
+
+<tr>
+    <th>Name</th>
+    <th>Status</th>
+    <th>Private IP</th>
+    <th>Public IP</th>
+    <th>Instance Type</th>
+    <th>Availability Zone</th>
+    <th>Active Since</th>
+</tr>
+
+</thead>
+
+<tbody>
+
+{% for reservation in ec2_info.instances %}
+
+<tr>
+
+<td>
+    {{ reservation.tags.Name | default('No-Name') }}
+</td>
+
+<td>
+
+<span class="{{ reservation.state.name }}">
+    {{ reservation.state.name }}
+</span>
+
+</td>
+
+<td>
+    {{ reservation.private_ip_address | default('N/A') }}
+</td>
+
+<td>
+    {{ reservation.public_ip_address | default('N/A') }}
+</td>
+
+<td>
+    {{ reservation.instance_type }}
+</td>
+
+<td>
+    {{ reservation.placement.availability_zone }}
+</td>
+
+<td>
+
+{% if reservation.state.name == "running" %}
+
+🟢 Active Since<br>
+{{ reservation.launch_time[:16] }}
+
+{% else %}
+
+🔴 Instance Stopped
+
+{% endif %}
+
+</td>
+
+</tr>
+
+{% endfor %}
+
+</tbody>
+
+</table>
+
+<div class="footer">
+    🔄 Auto Refresh Enabled Every 60 Seconds
+</div>
+
+<script>
+
+const searchInput = document.getElementById("searchInput");
+const statusFilter = document.getElementById("statusFilter");
+const table = document.getElementById("instanceTable");
+
+function filterTable() {
+
+    const search = searchInput.value.toLowerCase();
+    const status = statusFilter.value;
+
+    const rows = table.getElementsByTagName("tr");
+
+    for (let i = 1; i < rows.length; i++) {
+
+        const row = rows[i];
+
+        const text = row.innerText.toLowerCase();
+
+        const rowStatus = row.cells[1].innerText.trim().toLowerCase();
+
+        const matchesSearch = text.includes(search);
+
+        const matchesStatus =
+            status === "all" || rowStatus === status;
+
+        if (matchesSearch && matchesStatus) {
+            row.style.display = "";
+        } else {
+            row.style.display = "none";
+        }
+    }
+}
+
+searchInput.addEventListener("keyup", filterTable);
+
+statusFilter.addEventListener("change", filterTable);
+
+setTimeout(() => {
+    location.reload();
+}, 60000);
+
+</script>
+
+</body>
+
+</html>

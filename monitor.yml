@@ -1,0 +1,17 @@
+---
+- name: Worker Node Monitoring
+  hosts: localhost
+  gather_facts: yes
+
+  tasks:
+
+    - name: Get EC2 instance info
+      amazon.aws.ec2_instance_info:
+        region: ap-south-1
+      register: ec2_info
+
+    - name: Generate monitoring webpage
+      become: yes
+      template:
+        src: templates/index.j2
+        dest: /usr/share/nginx/html/index.html
